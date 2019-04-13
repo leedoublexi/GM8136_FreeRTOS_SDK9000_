@@ -1,0 +1,315 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <FreeRTOS.h>
+#include <task.h>
+#include <queue.h>
+#include "lib_board.h"
+#include "lib_lcd.h"
+#include "io.h"
+//#include "platform_io.h"
+
+#include "lib_panel.h"
+#include "lib_spi.h"
+#include "lib_mm.h"
+#include "lib_mcp100.h"
+
+#include "common.h"
+//#include "x_net.h"
+
+#include "x_udp.h"
+
+
+
+
+//#define OUTPUT_TV
+//#define _RGB
+
+
+#define JPEG480_OFFSET   0x00220100L // 0x00220100L
+
+
+
+
+
+extern int sar_adc_main(void);
+
+
+
+xQueueHandle queue_for_ui_key=NULL;
+
+#if ( configUSE_IDLE_HOOK == 1 )
+/* Declare a variable that will be incremented by the hook function. */
+volatile unsigned long ulIdleCycleCount = 0UL;
+volatile unsigned long ulShowIdleCount = 0UL;
+#endif
+extern u8 page_index;
+
+unsigned char fb_mem[DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX*2];
+//unsigned char jpeg_buf[DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX*2];
+u32               *jpeg_buf = NULL;
+u32               *decode_buf = NULL;
+
+
+
+
+
+
+
+static void test_flash(void)
+{
+#if 0
+        u8 *fb_mem1;
+		u32 t1, t2;
+		spi_platform_setting_t s;
+		u8* spi_rd_buf;
+		u8* spi_wt_buf;
+		u8* flash_buf;
+		int i, pixsize, jpeglen;
+		s32 ret;
+		JPEGDEC_FRAME_PARAM_T s_dec_frame;	
+		spi_rd_buf = gm_noncache_mem_alloc(4*1024, 32);   
+		if(spi_rd_buf == NULL){ 	 
+			  printf("spi_rd_buf alloc memory fail!\n");
+		}
+		
+		spi_wt_buf = gm_noncache_mem_alloc(64*1024, 32);
+		if(spi_wt_buf == NULL){ 	 
+				printf("spi_wt_buf alloc memory fail!\n");
+		}
+		   
+		s.buff_addr_r = spi_rd_buf;
+		s.buff_addr_w = spi_wt_buf;
+		s.option = GM_SPI_SPI020_FLASH;
+		t1 = clock();
+		gm_spi_init(NULL, &s);
+		jpeglen = 18955;
+		jpeg_buf = (u32 *)gm_noncache_mem_alloc(ALIGN(jpeglen, 256), 256);
+		gm_spi_flash_data_read(JPEG480_OFFSET, jpeglen, jpeg_buf);
+		t2 = clock();
+		fb_mem1 = (u8 *)jpeg_buf;
+		printf("old total ms = %d, jpeg_buf = 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X\n",  t2 - t1, fb_mem1[0], fb_mem1[1], fb_mem1[2], fb_mem1[3], fb_mem1[jpeglen-2], fb_mem1[jpeglen-1]); 
+	  printf("jpeg_buf = 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X\n",  fb_mem1[jpeglen-10], fb_mem1[jpeglen-9], fb_mem1[jpeglen-8], fb_mem1[jpeglen-7], fb_mem1[jpeglen-6], fb_mem1[jpeglen-5], fb_mem1[jpeglen-4], fb_mem1[jpeglen-3], fb_mem1[jpeglen-2], fb_mem1[jpeglen-1]);	
+	  
+	   printf("jpeg_buf = 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X\n",  fb_mem1[1000], fb_mem1[1001], fb_mem1[1002], fb_mem1[1003], fb_mem1[1004], fb_mem1[1005], fb_mem1[1006], fb_mem1[1007], fb_mem1[1008], fb_mem1[1009]);	
+		int w = 480;
+		int h = 272;
+		printf("test_flash::1\n");
+		
+	   
+		//Decode
+		jpeg_dec_init();
+	
+		
+	
+		s_dec_frame.bitstream  = (u8 *)jpeg_buf;   
+		s_dec_frame.bs_size  = ALIGN(jpeglen, 256);
+		s_dec_frame.thumbnail_dec = 0;
+		s_dec_frame.dst_Yaddr = JPEG_DECODE_BUF0;	   
+		s_dec_frame.dst_Uaddr = JPEG_DECODE_BUF0 + DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX;	  
+		s_dec_frame.dst_Vaddr = JPEG_DECODE_BUF0 + DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX*3/2;	
+		s_dec_frame.crop_enable   = 0;	
+		  
+		printf("2 dst_Yaddr = 0x%X, dst_Uaddr = 0x%X, dst_Vaddr = 0x%X, bitstream = 0x%X, bs_size = %d\n", 
+			s_dec_frame.dst_Yaddr, s_dec_frame.dst_Uaddr, s_dec_frame.dst_Vaddr, s_dec_frame.bitstream, s_dec_frame.bs_size);
+			
+		xSemaphoreTake(jpeg_access_mutex, portMAX_DELAY);
+		
+	   vTaskDelay(10);
+	
+		if(ret = gm_jpgdec_decframe(Jpeg_Dec_Handle, &s_dec_frame)){
+			 printf("decode JPEG Fail!!\n");
+			 while(1);
+		  }
+	
+		  //wait JPEG done
+		 // while(xQueueReceive(queue_for_save, &save_event, 1000) != pdPASS){				
+		 //    continue;
+		 // }
+	
+		printf("gm_jpgdec_decframe, ret = %d\n", ret);
+		//gm_lcd_set_frame_buf(LCD_FRAME_BUF_0, JPEG_DECODE_BUF0);
+		memcpy((void *)lcd_buffer1_addr, (const void *)JPEG_DECODE_BUF0, DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX*2);
+		//memcpy((void *)lcd_buffer_addr1, decode_buf, DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX*2);
+		vTaskDelay(3000);
+		
+		fb_mem1 = (const void *)JPEG_DECODE_BUF0;
+		printf("fb_mem1 0 - 8= 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X\n", fb_mem1[0], fb_mem1[1], fb_mem1[2], fb_mem1[3], fb_mem1[4], fb_mem1[5], fb_mem1[6], fb_mem1[7]);
+		printf("fb_mem1 9 - 16= 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X\n", fb_mem1[8], fb_mem1[9], fb_mem1[10], fb_mem1[11], fb_mem1[12], fb_mem1[13], fb_mem1[14], fb_mem1[15]);
+
+		gm_noncache_mem_free(jpeg_buf);
+	  //gm_noncache_mem_free(decode_buf);
+#endif
+}
+
+
+static void app_gui_main(void *param)
+{
+    int i, pixsize;
+
+#if 0		
+    lcd_buffer_addr2 = (u32)param;
+	lcd_buffer_addr = (u32)param;
+
+	//gm_gm2d_Lib_Open(4);
+	
+    gm_lcd_set_frame_buf(LCD_FRAME_BUF_1, lcd_buffer_addr2);//LCD_FRAME_BUF_1
+    vTaskDelay(3000);
+	printf("app_gui_main::1, lcd_buffer_addr2 = 0x%X, fb_mem = 0x%X\n", lcd_buffer_addr2, fb_mem);
+	pixsize = DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX*2;
+	//memset(lcd_buffer_addr2, 0, DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX*2);
+	for(i=0; i<pixsize; i+=2)
+	 {
+	  #ifdef _RGB
+		*(fb_mem + i) = 0x00;
+		*(fb_mem + i + 1)= 0xf8;	
+	  #else
+	  	    for(i=0; i<pixsize; i+=4)
+	         {
+	           *(fb_mem + i) = 90;       //U
+			   *(fb_mem + i + 1)= 81;    //Y
+	           *(fb_mem + i + 2) = 240;  //V
+			   *(fb_mem + i + 3)= 81;	 //Y		   
+	         }
+	  #endif
+	 }
+	memcpy((void *)lcd_buffer_addr, fb_mem, DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX*2);
+	printf("set R\n");
+	vTaskDelay(3000);
+
+	
+	//memset(lcd_buffer_addr2, 128, DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX*2);
+	for(i=0; i<pixsize; i+=2)
+	 {
+	 #ifdef _RGB
+		*(fb_mem + i) = 0xe0;
+		*(fb_mem +i + 1 )= 0x07;
+	 #else
+	 for(i=0; i<pixsize; i+=4)
+	 {
+	   *(fb_mem + i) = 54;	   //U
+	   *(fb_mem + i + 1)= 145;  //Y
+	   *(fb_mem + i + 2) = 34;  //V
+	   *(fb_mem + i + 3)= 145;  //Y			   
+	 }		
+	 #endif
+
+	 }	
+	memcpy((void *)lcd_buffer_addr, fb_mem, DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX*2);
+	//memset(lcd_buffer_addr, 128, DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX*2);
+	printf("set G\n");
+	vTaskDelay(3000);
+
+	
+	//memset(lcd_buffer_addr2, 255, DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX*2);
+	for(i=0; i<pixsize; i+=2)
+	 {
+	  #ifdef _RGB	 
+		*(fb_mem + i) = 0x1f;
+		*(fb_mem +i  + 1)= 0x00;
+	  #else	
+			 for(i=0; i<pixsize; i+=4)
+	         {
+	           *(fb_mem + i) = 240;     //U
+			   *(fb_mem + i + 1)= 41;   //Y
+	           *(fb_mem + i + 2) = 110; //V
+			   *(fb_mem + i + 3)= 41;   //Y			   
+	         }	
+	 #endif			 
+	 }
+	memcpy((void *)lcd_buffer_addr, fb_mem, DISPLAY_SRC_WIDTH_MAX*DISPLAY_SRC_HEIGHT_MAX*2);
+	printf("set Blue\n");
+	vTaskDelay(3000);
+#endif
+
+	//test_flash();
+	vTaskDelay(3000);	
+}
+
+void main_task(void *pvParameters)
+{
+    int i;
+   
+	printf("main_task::1\n");
+   
+    disp_init();
+	
+	//Decode
+	jpeg_dec_init();
+			
+	InterfaceInit(); //初始化界面资源
+	ClearWatchDog();
+	DisplayFirstWindow();	 //显示主窗口
+
+   for ( ;; ){
+
+#if ( configUSE_IDLE_HOOK == 1 )      
+    	//printf("idle=%ld\n", ulIdleCycleCount - ulShowIdleCount);
+    	ulIdleCycleCount++;//avoid no counting
+    	ulShowIdleCount = ulIdleCycleCount;
+#endif   
+      vTaskDelay(1000);
+   }
+}
+
+//网卡回调函数
+void NetStatusFunc(int type) 
+{
+    printf("NetStatusFunc::type = %d\n", type);
+	switch(type){
+		case 0://NET_PROBE_OK:
+		     LocalCfg.IP[3] = 170;
+		     //net_refresh_addr(LocalCfg.IP, LocalCfg.IP_Mask, LocalCfg.IP_Gate, 0);
+			Init_Udp();
+			break;
+	}
+}
+int main(void)
+{
+   BOARD_PARAMETER_T board_params;
+   board_params.uart_tx_int_mode = 0;
+   board_params.uart_rx_int_mode = 1;
+   board_params.noncache_heap_size = 0x00A00000;   //8M bytes
+   gm_board_init(&board_params);
+
+   Init_LocalVar(); //初始化 Local 结构
+
+   printf("main::1, NetStatusFunc = 0x%X, IP = %d.%d.%d.%d\n", NetStatusFunc, LocalCfg.IP[0], LocalCfg.IP[1], LocalCfg.IP[2], LocalCfg.IP[3]);
+   LocalCfg.IP[0] = 192;
+   LocalCfg.IP[1] = 168;
+   LocalCfg.IP[2] = 1;
+   LocalCfg.IP[3] = 161;
+   LocalCfg.IP_Gate[0] = 192;
+   LocalCfg.IP_Gate[1] = 168;
+   LocalCfg.IP_Gate[2] = 1;
+   LocalCfg.IP_Gate[3] = 1;     
+   net_set_addr(LocalCfg.IP, LocalCfg.IP_Mask, LocalCfg.IP_Gate, 0);
+ 
+   net_init(NetStatusFunc);
+
+
+   xTaskCreate(main_task, "Main Task", 3000, NULL, 5, NULL );   
+   vTaskStartScheduler();
+    
+   return 0;
+}
+
+
+void vApplicationIdleHook( void )
+{
+   /* This hook function does nothing but increment a counter. */
+#if ( configUSE_IDLE_HOOK == 1 )
+	ulIdleCycleCount++;
+#endif
+}
+
+
+void vApplicationStackOverflowHook( xTaskHandle xTask, char *pcTaskName )
+{       
+   /* Run time stack overflow checking is performed if
+   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2.  This hook
+   function is called if a stack overflow is detected. */
+   printf("%s stack overflow\n",pcTaskName);
+   taskDISABLE_INTERRUPTS();
+   for( ;; );     
+}

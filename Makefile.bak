@@ -1,0 +1,109 @@
+
+include $(TOP_DIR)/config.mk
+#-O2
+CPPFLAGS += -O2 -I. 
+CPPFLAGS += -I./include
+CPPFLAGS += -I$(TOP_DIR)/include
+CPPFLAGS += -I$(TOP_DIR)/drivers/soc/include
+CPPFLAGS += -I$(TOP_DIR)/drivers/soc/isp
+CPPFLAGS += -I$(TOP_DIR)/os/FreeRTOS/Source/include
+CPPFLAGS += -I$(TOP_DIR)/os/FreeRTOS/Source/portable/RVDS/GM
+CPPFLAGS += -I$(TOP_DIR)/mw/lwip_g/src/include
+CPPFLAGS += -I$(TOP_DIR)/mw/lwip_g/ports/include
+CPPFLAGS += -I$(TOP_DIR)/mw/lwip_g/src/include/ipv4
+CPPFLAGS += -I$(TOP_DIR)/drivers/soc/usbhost
+
+#CPPFLAGS += -I. 
+#CPPFLAGS += -I./include
+#CPPFLAGS += -I$(TOP_DIR)/include
+#CPPFLAGS += -I$(TOP_DIR)/drivers/soc/include
+#CPPFLAGS += -I$(TOP_DIR)/os/FreeRTOS/Source/include
+#CPPFLAGS += -I$(TOP_DIR)/os/FreeRTOS/Source/portable/RVDS/GM
+#CPPFLAGS += -I$(TOP_DIR)/mw/lwip_g/src/include
+#CPPFLAGS += -I$(TOP_DIR)/mw/lwip_g/ports/include
+#CPPFLAGS += -I$(TOP_DIR)/mw/lwip_g/src/include/ipv4
+#CPPFLAGS += -I$(TOP_DIR)/drivers/soc/usbhost
+#CPPFLAGS += -I$(TOP_DIR)/mw/lwip_g/services
+
+OBJLST = ./main.o \
+				./x_lcd.o \
+				./x_disp.o \
+				./x_udp.o \
+				./x_main.o	\
+				./x_first.o \
+				./x_setup.o	\
+				./x_touch.o \
+				./x_info.o \
+				./x_talk.o \
+				./x_gpio.o \
+				./x_timer.o \
+				./x_alarm.o \
+				./x_video.o \
+				./audio_proc.o \
+				./x_audio.o \
+				./x_comm.o \
+				./x_record.o \
+				./g711core.o \
+				./GT911.o \
+				./abtx_init.o
+
+				
+						
+
+RETARGET_OBJECT = $(TOP_DIR)/lib/reimplement.o 
+LIBLST =	$(TOP_DIR)/lib/usbhost.a \
+			$(TOP_DIR)/lib/lcd210.a		\
+			$(TOP_DIR)/lib/gm2d.a			\
+			$(TOP_DIR)/lib/misc.a		\
+			$(TOP_DIR)/lib/os.a			\
+			$(TOP_DIR)/lib/comm.a  \
+			$(TOP_DIR)/lib/cpu.a \
+			$(TOP_DIR)/lib/rtc.a  \
+			$(TOP_DIR)/lib/mac.a		\
+			$(TOP_DIR)/lib/tcpip_g.a	\
+			$(TOP_DIR)/lib/sar_adc.a \
+			$(TOP_DIR)/lib/dma.a  \
+			$(TOP_DIR)/lib/ssp_dma.a  \
+			$(TOP_DIR)/lib/adda308.a  \
+			$(TOP_DIR)/lib/panel.a \
+			$(TOP_DIR)/lib/spi020.a  \
+			$(TOP_DIR)/lib/mcp100.a 	\
+			$(TOP_DIR)/lib/wdt010.a \
+			$(TOP_DIR)/lib/pwm010.a \
+			$(TOP_DIR)/lib/xtm9000.a 	\
+			$(TOP_DIR)/lib/libaec.a
+			
+#			$(TOP_DIR)/lib/xtm8900.a 		
+.PHONY:all
+all: $(SUBDIRS) Image
+
+.PHONY : $(SUBDIRS)
+$(SUBDIRS):
+	make -C $@ all
+
+.PHONY : Image
+ifeq ($(findstring GCC,$(COMP)),GCC)
+Image:  $(OBJLST)  
+	$(LD) $(LDFLAGS)  -Wl,-T platform.ld $(OBJLST) $(RETARGET_OBJECT) -Wl,--start-group $(LIBLST) -Wl,--end-group -lm -o $(TOP_DIR)/bin/room70.elf
+	$(FE) -O binary $(TOP_DIR)/bin/room70.elf $(TOP_DIR)/bin/room70.bin
+	copy $(TOP_DIR)\bin\room70.bin $(TOP_DIR)\..\spi_flash_bcb\room70.bin
+endif
+
+ifeq ($(COMP),ARMCC)
+LDFLAGS = --ro-base=0 --first=boot.o(SelfBoot) --callgraph --map --mangled --symbols --list=list.txt
+Image:  $(OBJLST)
+	$(LD) $(LDFLAGS) --output $(TOP_DIR)/bin/room70.axf $(OBJLST) $(LIBLST)
+	$(FE) --bin --output=$(TOP_DIR)/bin/room70.bin $(TOP_DIR)/bin/room70.axf
+	
+endif
+
+
+.PHONY:clean
+clean:
+ifeq ($(findstring linux,$(OSTYPE)),linux)
+	find . -name "*.o" -type f -delete
+else
+	del /S /Q ..\room70\*.o  
+endif
+
+	
