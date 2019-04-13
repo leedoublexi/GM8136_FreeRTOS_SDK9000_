@@ -457,11 +457,14 @@ void TalkCtrlFunc(void)  //对讲控制，显示通话时间和判断超时
                  CallTimeOut = CALLTIMEOUT + 3*TIMERPERSEC;
               }
 
+			#ifdef _REMOTECALLTEST  //
+
 			 //5秒后接听
 			 if(Local.Status == 2)
 				 if(Local.TimeOut > 5*TIMERPERSEC)
 				 	Talk_Func(); 
-				 
+			#endif
+			
              if(Local.TimeOut > CallTimeOut)
               {
                //查看是否在其它组播组内

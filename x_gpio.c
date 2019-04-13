@@ -874,7 +874,7 @@ void Check_Pon_Status(void) //¼ì²âPON×´Ì¬
   //tmpvalue = inportb(GPIOC_IN_DATA);
   tmpvalue1 = gm_gpio_get_value(CHECK_PON_STATUS1_IO);
   tmpvalue2 = gm_gpio_get_value(CHECK_PON_STATUS2_IO);
-  xtm_printf("step2::check pon status gpio0_30 = %d,check pon status gpio0_31 = %d\n", tmpvalue1, tmpvalue2);
+  //xtm_printf("step2::check pon status gpio0_30 = %d,check pon status gpio0_31 = %d\n", tmpvalue1, tmpvalue2);
 
   if(!tmpvalue1)
   //if(!(tmpvalue & GPIOC4_IO))
@@ -887,7 +887,7 @@ void Check_Pon_Status(void) //¼ì²âPON×´Ì¬
   else
     pon_io.gpioc5_high ++;
   
-  xtm_printf("check_pon_status step1::Pon_Check_Num = %d\n", Pon_Check_Num);
+  //xtm_printf("check_pon_status step1::Pon_Check_Num = %d\n", Pon_Check_Num);
   Pon_Check_Num ++;
   if(Pon_Check_Num > 100)
    {
@@ -947,6 +947,7 @@ void Check_Pon_Status(void) //¼ì²âPON×´Ì¬
 
     xtm_printf("pon_io.gpioc4_high = %d\n, pon_io.gpioc4_low = %d\n, pon_io.gpioc5_high = %d\n, pon_io.gpioc5_low = %d\n", pon_io.gpioc3_high, pon_io.gpioc3_low, pon_io.gpioc5_high, pon_io.gpioc5_low);
     xtm_printf("PonSearch.Pon_Status = %d\n, gpioc4_status = %d\n, gpioc5_status = %d\n, Check_Pon_Status::OldStatus = %d\n", PonSearch.Pon_Status, gpioc3_status, gpioc5_status);
+	xtm_printf("step2::check pon status gpio0_30 = %d\n,check pon status gpio0_31 = %d\n", tmpvalue1, tmpvalue2);
    }
 }
 #endif
