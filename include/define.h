@@ -16,7 +16,7 @@
 //#define _TCPM  //20150727 电容屏支持
 #define _TCPM_70A                     //7寸电容屏 或者10寸电容屏切换  0902
 
-#define _REMOTECALLTEST          //远程呼叫测试
+//#define _REMOTECALLTEST          //远程呼叫测试
 #define _ADDTABLE_SUPPORT      //地址表支持
 #define _MULTI_MACHINE_SUPPORT   //多分机支持
 //#define _CAMERA_SUPPORT        //如不用摄像头，GPIOB6、7为Comm1, GPIOC 作为8个防区使用   测试模式
