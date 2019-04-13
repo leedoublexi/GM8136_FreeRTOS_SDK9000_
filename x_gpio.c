@@ -943,10 +943,10 @@ void Check_Pon_Status(void) //¼ì²âPON×´Ì¬
       PonSearch.Status0_Num = 0;
 
     if(OldStatus != PonSearch.Pon_Status)
-       xtm_printf("Check_Pon_Status::OldStatus = %d, PonSearch.Pon_Status = %d\n", OldStatus, PonSearch.Pon_Status);
+       //xtm_printf("Check_Pon_Status::OldStatus = %d, PonSearch.Pon_Status = %d\n", OldStatus, PonSearch.Pon_Status);
 
-    xtm_printf("pon_io.gpioc4_high = %d, pon_io.gpioc4_low = %d, pon_io.gpioc5_high = %d, pon_io.gpioc5_low = %d\n", pon_io.gpioc3_high, pon_io.gpioc3_low, pon_io.gpioc5_high, pon_io.gpioc5_low);
-    xtm_printf("PonSearch.Pon_Status = %d, gpioc4_status = %d, gpioc5_status = %d\n", PonSearch.Pon_Status, gpioc3_status, gpioc5_status);
+    xtm_printf("pon_io.gpioc4_high = %d\n, pon_io.gpioc4_low = %d\n, pon_io.gpioc5_high = %d\n, pon_io.gpioc5_low = %d\n", pon_io.gpioc3_high, pon_io.gpioc3_low, pon_io.gpioc5_high, pon_io.gpioc5_low);
+    xtm_printf("PonSearch.Pon_Status = %d\n, gpioc4_status = %d\n, gpioc5_status = %d\n, Check_Pon_Status::OldStatus = %d\n", PonSearch.Pon_Status, gpioc3_status, gpioc5_status);
    }
 }
 #endif
